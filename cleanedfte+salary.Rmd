@@ -1,0 +1,197 @@
+---
+title: "clean annual salary"
+author: "priscilla"
+date: "4/12/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r}
+data_2014 <- read_excel("/Users/priscilla/Desktop/teacher_shortage/2014-15 Professional Personnel Individual Staff Report.xlsx")%>% filter(!SchNum %in% c("0000", "9999", "Off-Site"))%>% filter(!PublicID %in% c("1880041809", "-1629249266"))%>% filter(Status == "Active")
+```
+
+
+```{r read data}
+
+
+data_2015 <- read_excel("/Users/priscilla/Desktop/teacher_shortage/2015-16 Professional Personnel Individual Staff Report.xlsx")%>% filter(!SchNum %in% c("0000", "9999", "Off-Site"))%>% filter(!PublicID %in% c("1880041809", "-1629249266"))%>% filter(Status == "Active")
+data_2016 <- read_excel("/Users/priscilla/Desktop/teacher_shortage/2016-17 Professional Personnel Individual Staff Report.xlsx")%>% filter(!SchNum %in% c("0000", "9999", "Off-Site"))%>% filter(!PublicID %in% c("1880041809", "-1629249266"))%>% filter(Status == "Active")
+data_2017 <- read_excel("/Users/priscilla/Desktop/teacher_shortage/2017-18 Professional Personnel Individual Staff Report.xlsx")%>% filter(!SchNum %in% c("0000", "9999", "Off-Site"))%>% filter(!PublicID %in% c("1880041809", "-1629249266"))%>% filter(Status == "Active")
+
+data_2018 <- read_excel("/Users/priscilla/Desktop/teacher_shortage/2018-19 Professional Personnel Individual Staff Report.xlsx") %>% rename(YearsInEd = YearsInED)%>% filter(!SchNum %in% c("0000", "9999", "Off-Site"))%>% filter(!PublicID %in% c("1880041809", "-1629249266"))%>% filter(Status == "Active")
+data_2019 <- read_excel("/Users/priscilla/Desktop/teacher_shortage/2019-20 Professional Personnel Individual Staff Report.xlsx") %>% rename(YearsInEd = YearsInED)%>% filter(!SchNum %in% c("0000", "9999", "Off-Site"))%>% filter(!PublicID %in% c("1880041809", "-1629249266"))%>% filter(Status == "Active")
+```
+
+```{r}
+data_2020 <- read_excel("/Users/priscilla/Desktop/teacher_shortage/2020-21 Professional Personnel Individual Staff Report.xlsx") %>% 
+  mutate(PublicID = as.numeric(PublicID)) %>% 
+  rename(YearsInEd = YearsInED) %>%
+  mutate(AnnualSalary = ifelse(AnnualSalary == "Salary Excluded for Fictitious", NA, AnnualSalary))%>% filter(!SchNum %in% c("0000", "9999", "Off-Site"))%>% filter(!PublicID %in% c("1880041809", "-1629249266"))%>% filter(Status == "Active")
+
+
+```
+
+```{r find all distinct salary for each individual}
+select_var <- function(data) {
+  
+data <- data %>%distinct(PublicID,AnnualSalary)
+
+return(data)
+  
+}
+data_list <- list(data_2014, data_2015, data_2016, data_2017, data_2018, data_2019, data_2020)
+temp <- lapply(data_list, select_var)
+names(temp) <- c("data_2014_short", "data_2015_short", "data_2016_short", "data_2017_short", "data_2018_short","data_2019_short", "data_2020_short")
+list2env(temp, envir = .GlobalEnv)
+
+```
+```{r}
+data_2014_short[duplicated(data_2014_short$PublicID),]
+
+```
+
+```{r sum up all the distinct salary of each individual}
+sumsalary_var <- function(data) {
+  
+data <- data %>%group_by(PublicID)%>%
+  summarize(sum_salary = sum(as.numeric(AnnualSalary)))
+
+return(data)
+  
+}
+data_list1 <- list(data_2014_short, data_2015_short, data_2016_short, data_2017_short, data_2018_short,data_2019_short, data_2020_short)
+temp <- lapply(data_list1, sumsalary_var)
+names(temp) <- c("data_2014_filter", "data_2015_filter", "data_2016_filter", "data_2017_filter", "data_2018_filter","data_2019_filter", "data_2020_filter")
+list2env(temp, envir = .GlobalEnv)
+```
+```{r add new column of the correct salary in the main dataset}
+data_2014<-data_2014 %>%full_join(data_2014_filter, by = "PublicID" ) 
+data_2015<-data_2015 %>%full_join(data_2015_filter, by = "PublicID" ) 
+data_2016<-data_2016 %>%full_join(data_2016_filter, by = "PublicID" ) 
+data_2017<-data_2017 %>%full_join(data_2017_filter, by = "PublicID" ) 
+data_2018<-data_2018 %>%full_join(data_2018_filter, by = "PublicID" ) 
+data_2019<-data_2019 %>%full_join(data_2019_filter, by = "PublicID" ) 
+data_2020<-data_2020 %>%full_join(data_2020_filter, by = "PublicID" ) 
+
+```
+
+
+
+
+```{r sum fte of each individual}
+sum_fte <- function(data) {
+  
+data<-data %>%
+group_by(PublicID) %>%
+summarize(sum_fte = sum(as.numeric(FTE))) %>%
+
+
+return(data)
+  
+}
+data_list2 <- list(data_2014, data_2015, data_2016, data_2017, data_2018, data_2019, data_2020)
+temp <- lapply(data_list2, sum_fte)
+names(temp) <- c("data_2014_sumfte", "data_2015_sumfte", "data_2016_sumfte", "data_2017_sumfte", "data_2018_sumfte","data_2019_sumfte", "data_2020_sumfte")
+list2env(temp, envir = .GlobalEnv)
+  
+
+```
+
+
+
+```{r add new column of the sum of fte}
+data_2014<-data_2014 %>%full_join(data_2014_sumfte, by = "PublicID" )
+data_2015<-data_2015 %>%full_join(data_2015_sumfte, by = "PublicID" ) 
+data_2016<-data_2016 %>%full_join(data_2016_sumfte, by = "PublicID" ) 
+data_2017<-data_2017 %>%full_join(data_2017_sumfte, by = "PublicID" ) 
+data_2018<-data_2018 %>%full_join(data_2018_sumfte, by = "PublicID" ) 
+data_2019<-data_2019 %>%full_join(data_2019_sumfte, by = "PublicID" ) 
+data_2020<-data_2020 %>%full_join(data_2020_sumfte, by = "PublicID" ) 
+
+```
+
+
+```{r }
+data_2014$dummyfte=ifelse(data_2014$sum_fte > 100 ,1,0)
+data_2015$dummyfte=ifelse(data_2015$sum_fte > 100 ,1,0)
+data_2016$dummyfte=ifelse(data_2016$sum_fte > 100 ,1,0)
+data_2017$dummyfte=ifelse(data_2017$sum_fte > 100 ,1,0)
+data_2018$dummyfte=ifelse(data_2018$sum_fte > 100 ,1,0)
+data_2019$dummyfte=ifelse(data_2019$sum_fte > 100 ,1,0)
+data_2020$dummyfte=ifelse(data_2020$sum_fte > 100 ,1,0)
+```
+
+
+
+
+
+```{r }
+data_2014$FTE=ifelse(data_2014$dummyfte ==1 ,(data_2014$FTE/data_2014$sum_fte)*100 ,data_2014$FTE)
+data_2015$FTE=ifelse(data_2015$dummyfte ==1 ,(data_2015$FTE/data_2015$sum_fte)*100 ,data_2015$FTE)
+data_2016$FTE=ifelse(data_2016$dummyfte ==1 ,(data_2016$FTE/data_2016$sum_fte)*100 ,data_2016$FTE)
+data_2017$FTE=ifelse(data_2017$dummyfte ==1 ,(data_2017$FTE/data_2017$sum_fte)*100 ,data_2017$FTE)
+data_2018$FTE=ifelse(data_2018$dummyfte ==1 ,(as.numeric(data_2018$FTE)/data_2018$sum_fte)*100 ,data_2018$FTE)
+data_2019$FTE=ifelse(data_2019$dummyfte ==1 ,(as.numeric(data_2019$FTE)/data_2019$sum_fte)*100 ,data_2019$FTE)
+data_2020$FTE=ifelse(data_2020$dummyfte ==1 ,(as.numeric(data_2020$FTE)/data_2020$sum_fte)*100 ,data_2020$FTE)
+
+
+```
+```{r since 2014 data do not have the primary variable, we only keep the row with maximun FTE}
+cleanned2014<-data_2014 %>%
+     group_by(PublicID) %>%
+     slice(which.max(FTE))
+
+
+```
+
+
+
+```{r}
+table(data_2020$`Primary Assignment`)
+
+
+
+
+```
+```{r}
+cleanned <- function(data) {
+  
+data<-data %>%
+group_by(PublicID) %>% filter(`Primary Assignment` == "Yes") %>% slice(which.max(FTE))
+
+
+return(data)
+  
+}
+data_list3 <- list( data_2015, data_2016, data_2017, data_2018, data_2019, data_2020)
+temp <- lapply(data_list3, cleanned)
+names(temp) <- c("cleanned2015", "cleanned2016", "cleanned2017", "cleanned2018", "cleanned2019","cleanned2020")
+list2env(temp, envir = .GlobalEnv)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
